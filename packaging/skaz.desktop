@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=SKAZ
+NoDisplay=true
+Terminal=false
+Exec=@SKAZ_EXEC@
+MimeType=x-scheme-handler/skaz;

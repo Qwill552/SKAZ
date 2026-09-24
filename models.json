@@ -1,0 +1,25 @@
+{
+  "silero_v5_ru": {
+    "url": "https://models.silero.ai/models/tts/ru/v5_ru.pt",
+    "sha256": "7ba04d42340fe0398042eed2e0d12d62e23096d626b1b9feff4dcb1309197ab4",
+    "size_mb": 139,
+    "license": "CC-BY-NC-SA-4.0",
+    "sample_rate": 48000,
+    "voices": ["aidar", "baya", "kseniya", "eugene", "xenia"]
+  },
+  "silero_v5_cis_base": {
+    "url": "https://models.silero.ai/models/tts/ru/v5_cis_base.pt",
+    "sha256": "ba41b18f6a707ad93605a162998865e7c087153d2e010a26dd02229dab0e672a",
+    "size_mb": 87,
+    "license": "MIT",
+    "sample_rate": 48000,
+    "voices": [
+      "ru_aigul", "ru_albina", "ru_alexandr", "ru_alfia", "ru_alfia2",
+      "ru_bogdan", "ru_dmitriy", "ru_eduard", "ru_ekaterina", "ru_gamat",
+      "ru_igor", "ru_karina", "ru_kejilgan", "ru_kermen", "ru_marat",
+      "ru_miyau", "ru_nurgul", "ru_oksana", "ru_onaoy", "ru_ramilia",
+      "ru_roman", "ru_safarhuja", "ru_saida", "ru_sibday", "ru_vika",
+      "ru_zara", "ru_zhadyra", "ru_zhazira", "ru_zinaida"
+    ]
+  }
+}

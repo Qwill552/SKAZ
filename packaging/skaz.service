@@ -1,0 +1,11 @@
+[Unit]
+Description=SKAZ local text-to-speech server
+
+[Service]
+Type=simple
+ExecStart=@SKAZ_RUN@
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Сервер: секреты и локальный порт, не для репозитория
+config.json
+
+# Веса моделей: качаются при первом запуске (server/models.py), не в репозитории
+/models/
+
+# Windows installation and runtime state
+/.runtime/
+/logs/
+/.instance.lock
+/.maintenance.lock
+/.installing
+/.uninstalling
+/.skaz-install.json
+/bin/
+/python/
+/.uv-cache/
+/_check/tts9/install-*/
+/_check/tts9/Тест*/
+/_check/tts9/*-profile/
+/_check/
+/spike/
+/user_dict.json
+/.claude/
+/.codex/

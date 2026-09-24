@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.12.17'
+      - run: uv lock --check
+      - run: python -m compileall -q server packaging
+      - run: uvx ruff check --isolated --select E4,E7,E9,F server packaging
+      - run: uv run --no-project --with num2words --with numpy --with scipy --with qrcode python -m unittest server.normalize.tests.interjections_test server.normalize.tests.stress_test server.normalize.tests.user_dict_test server.backends.timings_test server.install_model_test
+      - run: uv run --no-project --with num2words --with numpy --with scipy --with qrcode python -m server.http.setup_test
+      - run: python packaging/protocol_test.py
+      - run: python packaging/release_test.py
+      - run: node --check userscript/skaz.user.js
+      - run: node userscript/tests/chunks.js
+      - run: node userscript/tests/dictionary.js
+      - run: bash -n install.sh uninstall.sh run.sh packaging/update.sh

@@ -1,0 +1,67 @@
+<svg id="mainSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+              <defs>
+                <linearGradient id="gTop" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#FFD54F"></stop>
+                  <stop offset="100%" stop-color="#FFF3B0"></stop>
+                </linearGradient>
+                <linearGradient id="gLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#FFA000"></stop>
+                  <stop offset="100%" stop-color="#FF6F00"></stop>
+                </linearGradient>
+                <linearGradient id="gRight" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#FF6F00"></stop>
+                  <stop offset="100%" stop-color="#D84315"></stop>
+                </linearGradient>
+                <linearGradient id="gPeakTop" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#FFFDE7"></stop>
+                  <stop offset="100%" stop-color="#FFE082"></stop>
+                </linearGradient>
+                <linearGradient id="gPeakLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#FFCA28"></stop>
+                  <stop offset="100%" stop-color="#FF8F00"></stop>
+                </linearGradient>
+                <linearGradient id="gPeakRight" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#FF8F00"></stop>
+                  <stop offset="100%" stop-color="#E65100"></stop>
+                </linearGradient>
+                <filter id="shadowFilter" x="-15%" y="-15%" width="130%" height="135%">
+                  <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#E65100" flood-opacity="0.32"></feDropShadow>
+                  <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.25"></feDropShadow>
+                </filter>
+              </defs>
+
+              <g filter="url(#shadowFilter)">
+                <path d="M256 64 L420 158 L256 252 L92 158 Z" fill="url(#gTop)"></path>
+                <path d="M92 158 L256 252 L256 420 L92 326 Z" fill="url(#gLeft)"></path>
+                <path d="M256 252 L420 158 L420 326 L256 420 Z" fill="url(#gRight)"></path>
+              </g>
+
+              <path d="M256 122 L368 186 L256 250 L144 186 Z" fill="#D84315" opacity="0.25"></path>
+
+              <g id="sound-waves">
+                <g>
+                  <path d="M172 172 L196 158 L220 172 L196 186 Z" fill="url(#gTop)"></path>
+                  <path d="M172 172 L196 186 L196 246 L172 232 Z" fill="url(#gLeft)"></path>
+                  <path d="M196 186 L220 172 L220 232 L196 246 Z" fill="url(#gRight)"></path>
+                </g>
+
+                <g>
+                  <path d="M292 172 L316 158 L340 172 L316 186 Z" fill="url(#gTop)"></path>
+                  <path d="M292 172 L316 186 L316 260 L292 246 Z" fill="url(#gLeft)"></path>
+                  <path d="M316 186 L340 172 L340 246 L316 260 Z" fill="url(#gRight)"></path>
+                </g>
+
+                <g>
+                  <path d="M232 94 L256 80 L280 94 L256 108 Z" fill="url(#gPeakTop)"></path>
+                  <path d="M232 94 L256 108 L256 262 L232 248 Z" fill="url(#gPeakLeft)"></path>
+                  <path d="M256 108 L280 94 L280 248 L256 262 Z" fill="url(#gPeakRight)"></path>
+                </g>
+              </g>
+
+              <g fill="#FFE082" stroke="#E65100" stroke-width="2.5">
+                <circle cx="92" cy="158" r="4.5"></circle>
+                <circle cx="420" cy="158" r="4.5"></circle>
+                <circle cx="256" cy="64" r="5" fill="#FFFDE7"></circle>
+                <circle cx="256" cy="420" r="5" fill="#FF8F00" stroke="#FFF"></circle>
+              </g>
+            </svg>
