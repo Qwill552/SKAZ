@@ -77,9 +77,10 @@ def build(destination=DIST):
     script.write_bytes((ROOT / "userscript/skaz.user.js").read_bytes())
     checksums = {path.name: sha256(path) for path in (*archives.values(), script)}
     (destination / "version.json").write_text(json.dumps({"version": VERSION, "assets": checksums}, indent=2) + "\n", encoding="utf-8")
-    notes = "## Скачать SKAZ\n\nВыберите архив для своей системы. Архивы Source code, которые GitHub добавляет автоматически, не являются готовыми архивами для установки.\n\n## SHA-256\n\n```text\n"
-    notes += "".join(f"{checksums[path.name]}  {path.name}\n" for path in archives.values())
-    (destination / "release-notes.md").write_text(notes + "```\n", encoding="utf-8")
+    notes = (ROOT / "packaging/release-notes.md").read_text(encoding="utf-8").strip()
+    if not notes.startswith(f"## v{VERSION}\n"):
+        raise SystemExit("Update packaging/release-notes.md for the current version")
+    (destination / "release-notes.md").write_text(notes + "\n\nОткройте `README.txt` в скачанном архиве для инструкций по установке и обновлению.\n", encoding="utf-8")
     return archives
 
 

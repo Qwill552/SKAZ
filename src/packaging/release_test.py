@@ -32,8 +32,9 @@ class ReleaseTest(unittest.TestCase):
             for path in (*archives.values(), destination / "skaz.user.js"):
                 self.assertEqual(manifest["assets"][path.name], sha256(path))
             notes = (destination / "release-notes.md").read_text(encoding="utf-8")
-            for path in archives.values():
-                self.assertIn(f"{sha256(path)}  {path.name}", notes)
+            self.assertIn(f"## v{VERSION}", notes)
+            self.assertIn("README.txt", notes)
+            self.assertNotIn("SHA-256", notes)
             with zipfile.ZipFile(archives["windows"]) as archive:
                 names = set(archive.namelist())
                 self.assertIn("_internal/packaging/update.ps1", names)

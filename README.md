@@ -4,29 +4,17 @@
 
 <p><strong>Озвучивайте выделенный текст или всю страницу русским голосом прямо в браузере.</strong><br>SKAZ работает на вашем компьютере: текст отправляется только локальному серверу.</p>
 
-<p><a href="#скачать">Скачать</a> · <a href="#демонстрация">Демонстрация</a> · <a href="#установка">Установка</a> · <a href="#возможности">Возможности</a> · <a href="#настройки">Настройки</a> · <a href="#лицензии">Лицензии</a></p>
+<p><a href="#установка-расширения">Установка расширения</a> · <a href="#установка">Установка</a> · <a href="#возможности">Возможности</a> · <a href="#настройки">Настройки</a> · <a href="#лицензии">Лицензии</a></p>
+
+[![Скачать для Windows](https://img.shields.io/badge/Windows-7B61FF?style=flat-square&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTEgMyAxMSAxLjV2MTBIMXptMTEtMS42TDIzIDB2MTEuNUgxMnpNMSAxMi41aDEwdjEwTDEgMjF6bTExIDBoMTFWMjRsLTExLTEuNXoiLz48L3N2Zz4=)](https://github.com/Qwill552/SKAZ/releases/latest/download/skaz-windows.zip) [![Скачать для Linux](https://img.shields.io/badge/Linux-7B61FF?style=flat-square&logo=linux&logoColor=white)](https://github.com/Qwill552/SKAZ/releases/latest/download/skaz-linux.tar.gz) [![Скачать для macOS](https://img.shields.io/badge/macOS-7B61FF?style=flat-square&logo=apple&logoColor=white)](https://github.com/Qwill552/SKAZ/releases/latest/download/skaz-macos.tar.gz)
+
+https://github.com/user-attachments/assets/1f7c2d00-59da-403b-9547-a8f0513b4a0a
 
 </div>
 
-## Скачать
+## Установка расширения
 
-[![Скачать для Windows](https://img.shields.io/badge/Windows-7B61FF?style=flat-square&logo=windows&logoColor=white)](https://github.com/Qwill552/SKAZ/releases/latest/download/skaz-windows.zip)
-[![Скачать для Linux](https://img.shields.io/badge/Linux-7B61FF?style=flat-square&logo=linux&logoColor=white)](https://github.com/Qwill552/SKAZ/releases/latest/download/skaz-linux.tar.gz)
-[![Скачать для macOS](https://img.shields.io/badge/macOS-7B61FF?style=flat-square&logo=apple&logoColor=white)](https://github.com/Qwill552/SKAZ/releases/latest/download/skaz-macos.tar.gz)
-
-## Демонстрация
-
-[▶ Смотреть демонстрацию SKAZ (MP4)](https://github.com/Qwill552/SKAZ/blob/main/.github/readme/demo.mp4)
-
-## Установка
-
-1. Скачайте архив для своей системы, распакуйте его и выполните раздел «УСТАНОВКА» из вложенного `README.txt`.
-2. Установите [Tampermonkey](https://www.tampermonkey.net/) в браузере и включите поддержку пользовательских скриптов, если браузер её запрашивает.
-3. На странице настройки SKAZ установите предложенный юзерскрипт и нажмите «Связать с браузером». На любом сайте выделите текст и нажмите **Alt+T**.
-
-Для первой установки нужны интернет и около **2 ГБ свободного места**: установщик скачивает Python, зависимости и модель. Системный Python ставить не требуется. После установки озвучка работает без интернета; интернет нужен для проверки и загрузки обновлений.
-
-### Установка расширения
+Установите [Tampermonkey](https://www.tampermonkey.net/) в браузере. В Opera установите [Violentmonkey](https://violentmonkey.github.io/).
 
 > [!CAUTION]
 > Перед созданием нового сообщения о проблеме проверьте [существующие Issues](https://github.com/Qwill552/SKAZ/issues).
@@ -37,6 +25,13 @@
 > 2. На Chromium 138+ открыть сведения о Tampermonkey и включить «Разрешить пользовательские скрипты».
 >
 > В Opera установите [Violentmonkey](https://violentmonkey.github.io/) вместо Tampermonkey и разрешите расширению доступ к результатам на странице поиска в его настройках.
+
+## Установка
+
+1. Скачайте архив для своей системы, распакуйте его и выполните раздел «УСТАНОВКА» из вложенного `README.txt`.
+2. На странице настройки SKAZ установите предложенный юзерскрипт и нажмите «Связать с браузером». На любом сайте выделите текст и нажмите **Alt+T**.
+
+Для первой установки нужны интернет и около **2 ГБ свободного места**: установщик скачивает Python, зависимости и модель. Системный Python ставить не требуется. После установки озвучка работает без интернета; интернет нужен для проверки и загрузки обновлений.
 
 ### ВАЖНО!!! Предупреждение Windows SmartScreen
 
