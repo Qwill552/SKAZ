@@ -11,7 +11,7 @@ from . import install_model
 
 class ModelInstallTest(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent.parent / '_check')
+        self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         self.source = self.root / 'source.pt'
         self.source.write_bytes(b'checked model bytes')
