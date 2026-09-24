@@ -18,9 +18,12 @@ from pathlib import Path
 from .auth import check_auth
 from .http.setup import local_page_request, open_pair, parse_dict, render_setup, save_dict, take_pair, userscript_path, MAX_DICT_BYTES
 from .backends.silero import SileroBackend
+from .backends.edge import EdgeBackend
+from .backends.yandex import YandexBackend
 from .backends.stub import StubBackend
 from .models import ModelError, load_catalog
 from .normalize import normalize_tracked
+from .normalize.local import local_text
 from .normalize.spans import Tracked
 from .normalize.user_dict import UserDictWatcher
 from .version import VERSION
@@ -70,21 +73,26 @@ def load_or_create_config() -> dict:
 
 
 def build_backend(config: dict):
-    """stub — для отладки юзерскрипта без модели, доступен через конфиг.
-    silero — модель и голос по умолчанию, переключается ключом "model"."""
     backend_name = config.get("backend", DEFAULT_BACKEND)
     if backend_name == "stub":
         return StubBackend()
     if backend_name == "silero":
-        model_key = config.get("model", DEFAULT_MODEL)
         catalog = load_catalog(ROOT)
-        if model_key not in catalog:
-            raise SystemExit(f"Неизвестная модель '{model_key}' в config.json, есть: {', '.join(catalog)}")
-        return SileroBackend(
-            ROOT, model_key, catalog[model_key],
-            idle_unload_minutes=config.get("idle_unload_minutes", 10),
-            cache_size=config.get("cache_size", 50),
-        )
+        backends = {}
+        for model_key in config.get("models") or [config.get("model", DEFAULT_MODEL)]:
+            if model_key == "edge_tts":
+                backends[model_key] = EdgeBackend(config.get("cache_size", 50))
+            elif model_key == "yandex_tts":
+                backends[model_key] = YandexBackend(config.get("cache_size", 50))
+            elif model_key in catalog:
+                backends[model_key] = SileroBackend(
+                    ROOT, model_key, catalog[model_key],
+                    idle_unload_minutes=config.get("idle_unload_minutes", 10),
+                    cache_size=config.get("cache_size", 50),
+                )
+            else:
+                raise SystemExit(f"Неизвестная модель '{model_key}' в config.json")
+        return backends
     raise SystemExit(f"Неизвестный бэкенд '{backend_name}' в config.json (ожидался 'silero' или 'stub').")
 
 
@@ -113,11 +121,19 @@ def source_timings(words: list[dict], tracked: Tracked) -> list[list]:
     return [[s, e, a, b - a] for s, e, a, b in out]
 
 
+def edge_text(tracked: Tracked) -> Tracked:
+    indices = [index for index, char in enumerate(tracked.text) if char != "+"]
+    return Tracked("".join(tracked.text[index] for index in indices),
+                   [tracked.s0[index] for index in indices],
+                   [tracked.s1[index] for index in indices])
+
+
 def unload_timer(backend, stop_event: threading.Event) -> None:
     while not stop_event.wait(UNLOAD_CHECK_SECONDS):
-        maybe_unload = getattr(backend, "maybe_unload", None)
-        if maybe_unload and maybe_unload():
-            print(f"{time.strftime('%H:%M:%S')}  модель выгружена после простоя")
+        for item in backend.values() if isinstance(backend, dict) else [backend]:
+            maybe_unload = getattr(item, "maybe_unload", None)
+            if maybe_unload and maybe_unload():
+                print(f"{time.strftime('%H:%M:%S')}  {item.name} выгружена после простоя")
 
 
 def save_config(config: dict) -> None:
@@ -147,7 +163,8 @@ class SkazServer(HTTPServer):
 
     def __init__(self, address, handler_cls, config: dict, backend, user_dict: UserDictWatcher):
         self.config = config
-        self.backend = backend
+        self.backends = backend if isinstance(backend, dict) else {config.get("model", DEFAULT_MODEL): backend}
+        self.backend = self.backends.get(config.get("model", DEFAULT_MODEL), next(iter(self.backends.values())))
         self.user_dict = user_dict
         self.pair_until = 0.0
         super().__init__(address, handler_cls)
@@ -168,10 +185,13 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_wav(self, code: int, wav_bytes: bytes, timings: list | None = None) -> None:
+    def _send_wav(self, code: int, wav_bytes: bytes, timings: list | None = None,
+                  content_type: str = "audio/wav", fallback: bool = False) -> None:
         self.send_response(code)
-        self.send_header("Content-Type", "audio/wav")
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(wav_bytes)))
+        if fallback:
+            self.send_header("X-Skaz-Fallback", "silero")
         if timings:
             payload = json.dumps({"w": timings}, ensure_ascii=False, separators=(",", ":"))
             self.send_header(TIMINGS_HEADER, base64.b64encode(payload.encode("utf-8")).decode("ascii"))
@@ -249,6 +269,8 @@ class Handler(BaseHTTPRequestHandler):
             self._log(401, start)
             return
         backend = self.server.backend
+        models = {key: {"voices": item.voices, "online": key in ("edge_tts", "yandex_tts")}
+                  for key, item in self.server.backends.items()}
         self._send_json(200, {
             "ok": True,
             "version": VERSION,
@@ -256,6 +278,7 @@ class Handler(BaseHTTPRequestHandler):
             "backend": backend.name,
             "voices": backend.voices,
             "model_loaded": getattr(backend, "model_loaded", False),
+            "models": models,
         })
         self._log(200, start)
 
@@ -304,7 +327,8 @@ class Handler(BaseHTTPRequestHandler):
 
         text = str(data.get("text") or "").strip()
         voice = data.get("voice") or self.server.config["default_voice"]
-        backend = self.server.backend
+        model_key = data.get("model") or self.server.config.get("model", DEFAULT_MODEL)
+        backend = self.server.backends.get(model_key)
 
         if not text:
             self._send_json(400, {"error": "empty_text"})
@@ -325,8 +349,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(413, {"error": "too_long", "limit": MAX_TEXT_LENGTH})
             self._log(413, start)
             return
-        if voice not in backend.voices:
-            self._send_json(422, {"error": "bad_voice", "voices": backend.voices})
+        if backend is None or voice not in backend.voices:
+            self._send_json(422, {"error": "bad_voice", "models": list(self.server.backends)})
             self._log(422, start)
             return
         if not backend.ready:
@@ -334,13 +358,37 @@ class Handler(BaseHTTPRequestHandler):
             self._log(503, start)
             return
 
+        fallback = False
         try:
-            wav_bytes, words = backend.synth(normalized, voice)
+            synthesis_text = edge_text(tracked) if model_key in ("edge_tts", "yandex_tts") else local_text(tracked)
+            wav_bytes, words = backend.synth(synthesis_text.text, voice)
         except ModelError as e:
-            self._send_json(500, {"error": "model_error", "message": str(e)})
-            self._log(500, start)
-            return
-        self._send_wav(200, wav_bytes, source_timings(words, tracked))
+            if model_key not in ("edge_tts", "yandex_tts"):
+                self._send_json(500, {"error": "model_error", "message": str(e)})
+                self._log(500, start)
+                return
+            local = next((item for key, item in self.server.backends.items()
+                          if key not in ("edge_tts", "yandex_tts")), None)
+            if local is None:
+                self._send_json(503, {"error": "fallback_unavailable"})
+                self._log(503, start)
+                return
+            try:
+                fallback_voice = self.server.config.get("default_voice", local.voices[0])
+                if fallback_voice not in local.voices:
+                    fallback_voice = local.voices[0]
+                synthesis_text = local_text(tracked)
+                wav_bytes, words = local.synth(synthesis_text.text, fallback_voice)
+            except ModelError as fallback_error:
+                self._send_json(500, {"error": "model_error", "message": str(fallback_error)})
+                self._log(500, start)
+                return
+            fallback = True
+        content_type = "audio/wav"
+        if not fallback:
+            content_type = {"edge_tts": "audio/mpeg", "yandex_tts": "audio/ogg"}.get(model_key, "audio/wav")
+        self._send_wav(200, wav_bytes, source_timings(words, synthesis_text),
+                       content_type, fallback)
         self._log(200, start)
 
     def do_PUT(self):
@@ -399,8 +447,7 @@ def main() -> None:
     config["port"] = server.server_address[1]
     save_config(config)
 
-    print(f"SKAZ сервер: http://127.0.0.1:{config['port']}  (бэкенд: {backend.name})")
-    print(f"Голоса: {', '.join(backend.voices)}")
+    print(f"SKAZ сервер: http://127.0.0.1:{config['port']}  (модели: {', '.join(backend) if isinstance(backend, dict) else backend.name})")
     print()
     if not managed:
         print(f"Токен: {config['token']}")
@@ -431,9 +478,10 @@ def main() -> None:
         print("\nОстановлено.")
     finally:
         stop_event.set()
-        close = getattr(backend, "close", None)
-        if close:
-            close()
+        for item in backend.values() if isinstance(backend, dict) else [backend]:
+            close = getattr(item, "close", None)
+            if close:
+                close()
         server.server_close()
 
 

@@ -47,10 +47,46 @@ class ModelInstallTest(unittest.TestCase):
         original = b'{ "token": "keep me", "model": "silero_v5_ru", "port": 8759 }\n'
         (self.root / 'config.json').write_bytes(original)
         (self.root / 'user_dict.json').write_bytes(b'{"word":"accent"}\n')
-        with patch.object(install_model, 'ROOT', self.root), patch('sys.argv', ['test', '--unattended']):
+        with patch.object(install_model, 'ROOT', self.root), patch.object(install_model, 'CONFIG_DIR', self.root), \
+             patch('sys.argv', ['test', '--unattended']):
             install_model.main()
         self.assertEqual((self.root / 'config.json').read_bytes(), original)
         self.assertEqual((self.root / 'user_dict.json').read_bytes(), b'{"word":"accent"}\n')
+
+    def test_install_two_models_and_edge(self):
+        second = dict(self.entry, url=(self.root / 'second.pt').as_uri())
+        (self.root / 'second.pt').write_bytes(self.source.read_bytes())
+        (self.root / 'models.json').write_text(json.dumps({
+            'silero_v5_ru': dict(self.entry, voices=['baya']),
+            'silero_v5_cis_base': dict(second, voices=['ru_dmitriy'])
+        }), encoding='utf-8')
+        with patch.object(install_model, 'ROOT', self.root), patch.object(install_model, 'CONFIG_DIR', self.root), \
+             patch('sys.argv', ['test', '--model', 'silero_v5_ru,silero_v5_cis_base,edge_tts,yandex_tts', '--unattended']):
+            install_model.main()
+        config = json.loads((self.root / 'config.json').read_text(encoding='utf-8'))
+        self.assertEqual(config['models'], ['silero_v5_ru', 'silero_v5_cis_base', 'edge_tts', 'yandex_tts'])
+        self.assertTrue((self.root / 'models/source.pt').exists())
+        self.assertTrue((self.root / 'models/second.pt').exists())
+
+    def test_interactive_multiple_selection(self):
+        second = dict(self.entry, url=(self.root / 'second.pt').as_uri())
+        (self.root / 'second.pt').write_bytes(self.source.read_bytes())
+        (self.root / 'models.json').write_text(json.dumps({
+            'silero_v5_ru': self.entry, 'silero_v5_cis_base': second
+        }), encoding='utf-8')
+        with patch.object(install_model, 'ROOT', self.root), patch.object(install_model, 'CONFIG_DIR', self.root), \
+             patch('sys.argv', ['test']), patch('builtins.input', return_value='1,2'):
+            install_model.main()
+        config = json.loads((self.root / 'config.json').read_text(encoding='utf-8'))
+        self.assertEqual(config['models'], ['silero_v5_ru', 'silero_v5_cis_base'])
+
+    def test_yandex_selection_installs_local_fallback(self):
+        (self.root / 'models.json').write_text(json.dumps({'silero_v5_ru': self.entry}), encoding='utf-8')
+        with patch.object(install_model, 'ROOT', self.root), patch.object(install_model, 'CONFIG_DIR', self.root), \
+             patch('sys.argv', ['test', '--model', 'yandex_tts', '--unattended']):
+            install_model.main()
+        config = json.loads((self.root / 'config.json').read_text(encoding='utf-8'))
+        self.assertEqual(config['models'], ['silero_v5_ru', 'yandex_tts'])
 
     def test_failed_port_save_does_not_destroy_token(self):
         from . import main

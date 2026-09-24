@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SKAZ
 // @namespace    https://github.com/Qwill552/SKAZ
-// @version      1.0.2
+// @version      1.2.0
 // @updateURL    https://github.com/Qwill552/SKAZ/releases/latest/download/skaz.user.js
 // @downloadURL  https://github.com/Qwill552/SKAZ/releases/latest/download/skaz.user.js
 // @description  Озвучивает выделенный текст или всю страницу локальным Silero
@@ -40,7 +40,7 @@
   // ==== 1. Константы =====================================================
 
   const DEFAULT_BASE_URL = 'http://127.0.0.1:8756';
-  const SCRIPT_VERSION = '1.0.2';
+  const SCRIPT_VERSION = '1.2.0';
   const GITHUB_REPO = 'Qwill552/SKAZ';
   const DEFAULT_VOICE = 'baya';
   const DEFAULT_HOTKEY = { code: 'KeyT', alt: true, ctrl: false, shift: false, meta: false };
@@ -193,6 +193,7 @@
   // ==== 2. Настройки и хоткей ============================================
 
   function baseUrl() { return GM_getValue('baseUrl', DEFAULT_BASE_URL); }
+  function model() { return GM_getValue('model', 'silero_v5_ru'); }
   function voice() { return GM_getValue('voice', DEFAULT_VOICE); }
   function prefetch() { return Math.min(4, Math.max(1, Number(GM_getValue('prefetch', DEFAULT_PREFETCH)) || 2)); }
 
@@ -1029,8 +1030,130 @@
 
   // ==== 7. Панель ========================================================
   //
+  function clampVolume(value, fallback = 100) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.max(0, Math.min(200, Math.round(number))) : fallback;
+  }
+
+  const volume = {
+    level: clampVolume(GM_getValue('volume', 100)),
+    lastNonzero: clampVolume(GM_getValue('volumeLastNonzero', 100)) || 100,
+    muted: GM_getValue('volumeMuted', false) === true,
+    limited: false,
+  };
+
+  function volumeGain() { return volume.muted ? 0 : volume.level / 100; }
+
+  function applyVolume() {
+    const gain = volumeGain();
+    if (P.activeEl && P.audioContext && P.audioContext.state === 'running') {
+      const entry = P.audio.get(P.index);
+      if (entry && entry.gain) entry.gain.gain.value = gain;
+    } else if (P.activeEl) {
+      P.activeEl.volume = Math.min(1, gain);
+    }
+    updateVolumeControl();
+  }
+
+  function setVolume(value) {
+    volume.level = clampVolume(value);
+    volume.muted = false;
+    if (volume.level > 0) volume.lastNonzero = volume.level;
+    GM_setValue('volume', volume.level);
+    GM_setValue('volumeMuted', false);
+    GM_setValue('volumeLastNonzero', volume.lastNonzero);
+    applyVolume();
+  }
+
+  function toggleMute() {
+    if (volume.muted || volume.level === 0) {
+      volume.muted = false;
+      if (volume.level === 0) volume.level = volume.lastNonzero;
+    } else {
+      volume.muted = true;
+    }
+    GM_setValue('volume', volume.level);
+    GM_setValue('volumeMuted', volume.muted);
+    applyVolume();
+  }
+
   const panel = { host: null, root: null, els: null, hideTimer: null, settings: false, capturing: false,
-    dictRevision: 0, dictDirty: false };
+    dictRevision: 0, dictDirty: false, volumeTouchOpen: false };
+
+  function updateVolumeControl() {
+    if (!panel.els) return;
+    const silent = volume.muted || volume.level === 0;
+    const label = volume.muted ? `Звук выключен, сохранено ${volume.level}%` : `Громкость ${volume.level}%`;
+    const warning = volume.limited ? 'Усиление недоступно: фактически не выше 100%' : '';
+    panel.els.volumeButton.title = warning ? `${label}. ${warning}` : label;
+    panel.els.volumeButton.setAttribute('aria-label', label);
+    panel.els.volumeButton.setAttribute('aria-pressed', String(silent));
+    panel.els.volumeButton.classList.toggle('muted', silent);
+    panel.els.volumeButton.classList.toggle('limited', volume.limited);
+    panel.els.volumeSlider.value = String(volume.level);
+    panel.els.volumeSlider.style.setProperty('--volume-fill', `${volume.level / 2}%`);
+    panel.els.volumeSlider.setAttribute('aria-valuetext', `${volume.level}%`);
+    panel.els.volumeValue.textContent = `${volume.level}%`;
+    panel.els.volumeWarning.textContent = volume.limited ? '≤100%' : '';
+    if (panel.els.volumeControl.classList.contains('open')) openVolumeControl();
+  }
+
+  function openVolumeControl() {
+    if (!panel.els) return;
+    panel.els.volumeControl.classList.add('open');
+    const rect = panel.els.volumeButton.getBoundingClientRect();
+    const bottom = panel.els.volumeControl.classList.contains('bottom');
+    const available = bottom ? rect.top : window.innerHeight - rect.bottom;
+    const overhead = volume.limited ? 64 : 48;
+    panel.els.volumePopup.style.setProperty('--volume-height', `${Math.max(0, Math.min(180, available - overhead))}px`);
+  }
+
+  function closeVolumeControl() {
+    if (!panel.els || panel.volumeTouchOpen) return;
+    if (panel.els.volumeControl.contains(panel.root.activeElement)) return;
+    panel.els.volumeControl.classList.remove('open');
+  }
+
+  function wireVolumeControl() {
+    const control = panel.els.volumeControl;
+    const button = panel.els.volumeButton;
+    const slider = panel.els.volumeSlider;
+    control.addEventListener('pointerenter', openVolumeControl);
+    control.addEventListener('pointerleave', closeVolumeControl);
+    control.addEventListener('focusin', openVolumeControl);
+    control.addEventListener('focusout', () => setTimeout(closeVolumeControl, 0));
+    control.addEventListener('pointerdown', (event) => event.stopPropagation());
+    control.addEventListener('click', (event) => event.stopPropagation());
+    control.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      if (event.code === 'Escape') {
+        event.preventDefault();
+        panel.volumeTouchOpen = false;
+        panel.host.focus();
+        control.classList.remove('open');
+      }
+    });
+    control.addEventListener('wheel', (event) => { event.preventDefault(); event.stopPropagation(); }, { passive: false });
+    control.addEventListener('touchmove', (event) => {
+      event.stopPropagation();
+      if (event.target !== slider) event.preventDefault();
+    }, { passive: false });
+    button.addEventListener('click', () => {
+      toggleMute();
+      if (window.matchMedia('(hover: none)').matches) {
+        panel.volumeTouchOpen = true;
+        openVolumeControl();
+      }
+    });
+    slider.addEventListener('input', (event) => setVolume(event.target.value));
+    document.addEventListener('pointerdown', (event) => {
+      if (!panel.volumeTouchOpen || event.composedPath().includes(control)) return;
+      panel.volumeTouchOpen = false;
+      closeVolumeControl();
+    }, true);
+    window.addEventListener('resize', () => { if (control.classList.contains('open')) openVolumeControl(); });
+    updateVolumeControl();
+  }
 
   function panelPosition() {
     if (!panel.host) return;
@@ -1042,7 +1165,12 @@
     s.setProperty('right', corner.endsWith('right') ? `${x}px` : 'auto', 'important');
     s.setProperty('top', corner.startsWith('top') ? `${y}px` : 'auto', 'important');
     s.setProperty('bottom', corner.startsWith('bottom') ? `${y}px` : 'auto', 'important');
-    panel.root.querySelector('.panel-layout').classList.toggle('bottom', corner.startsWith('bottom'));
+    const layout = panel.root.querySelector('.panel-layout');
+    layout.classList.toggle('bottom', corner.startsWith('bottom'));
+    layout.classList.toggle('left', corner.endsWith('left'));
+    layout.classList.toggle('right', corner.endsWith('right'));
+    panel.root.querySelector('.volume-control').classList.toggle('bottom', corner.startsWith('bottom'));
+    if (panel.els && panel.els.volumeControl.classList.contains('open')) openVolumeControl();
   }
 
   function buildPanel() {
@@ -1062,10 +1190,37 @@
       <style>
         :host { all: initial; color-scheme: dark; }
         [hidden] { display:none !important; }
-        .panel-layout { display:flex; flex-direction:column; align-items:center; gap:8px; }
-        .panel-layout.bottom { flex-direction:column-reverse; }
-        .box {
-          box-sizing:border-box; max-width:calc(100vw - 32px);
+         .panel-layout { display:flex; flex-direction:column; align-items:center; gap:8px; }
+         .panel-layout.bottom { flex-direction:column-reverse; }
+         .panel-layout.left { align-items:flex-start; }
+         .panel-layout.right { align-items:flex-end; }
+         .main-row { display:flex; align-items:flex-start; gap:8px; position:relative; z-index:2; }
+         .panel-layout.bottom .main-row { align-items:flex-end; }
+         .panel-layout.left .volume-control { order:-1; }
+         .volume-control { position:relative; flex:none; width:36px; height:36px; font:13px/1.3 system-ui,sans-serif; color:#f0f0f0; }
+          .volume-button { display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; padding:0; background:#33353a; color:#f0f0f0; box-shadow:0 4px 16px #0006; }
+          .volume-button svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+          .volume-button .volume-off { display:none; }
+          .volume-button.muted .volume-wave { display:none; }
+          .volume-button.muted .volume-off { display:inline; }
+          .volume-button.limited::after { content:'!'; color:#ffca6a; font-size:13px; position:absolute; right:1px; bottom:0; }
+          .volume-popup { position:absolute; top:36px; left:0; box-sizing:border-box; width:36px;
+            display:flex; flex-direction:column; align-items:center; gap:5px;
+            opacity:0; visibility:hidden; pointer-events:none; transform:translateY(-5px); transition:opacity .16s, transform .16s, visibility .16s; }
+          .volume-control.bottom .volume-popup { top:auto; bottom:36px; transform:translateY(5px); }
+          .volume-control.open .volume-popup { opacity:1; visibility:visible; pointer-events:auto; transform:translateY(0); }
+          .volume-value { width:36px; text-align:center; font-variant-numeric:tabular-nums; white-space:nowrap; text-shadow:0 1px 3px #000, 0 0 4px #000; }
+          .volume-track { position:relative; height:var(--volume-height, 180px); width:36px; display:flex; align-items:center; justify-content:center; }
+          .volume-middle { position:absolute; left:0; right:0; top:50%; height:2px; background:#ffca6a; pointer-events:none; }
+          .volume-slider { appearance:none; writing-mode:vertical-lr; direction:rtl; width:24px; height:100%; margin:0; cursor:pointer; background:transparent; }
+          .volume-slider::-webkit-slider-runnable-track { width:8px; height:100%; border-radius:8px; background:linear-gradient(to top, #ffca6a var(--volume-fill), #30333a var(--volume-fill)); }
+          .volume-slider::-moz-range-track { width:8px; height:100%; border-radius:8px; background:linear-gradient(to top, #ffca6a var(--volume-fill), #30333a var(--volume-fill)); }
+          .volume-slider::-webkit-slider-thumb { appearance:none; width:18px; height:18px; border:2px solid #30333a; border-radius:50%; background:#ffca6a; }
+          .volume-slider::-moz-range-thumb { width:18px; height:18px; border:2px solid #30333a; border-radius:50%; background:#ffca6a; }
+          .volume-warning { width:36px; color:#ffca6a; text-align:center; font-size:11px; white-space:nowrap; text-shadow:0 1px 3px #000, 0 0 4px #000; }
+         .volume-warning:empty { display:none; }
+         .box {
+           box-sizing:border-box; max-width:calc(100vw - 80px);
           display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
           font: 13px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif;
           background: #1f2023; color: #f0f0f0;
@@ -1095,9 +1250,11 @@
         .settings.open { display:block; }
         .settings h2 { font-size:17px; margin:0 0 8px; }
         .settings label { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:8px 0; }
-        .settings input:not([type=checkbox]),.settings select,.settings textarea {
+        .settings input:not([type=checkbox]):not([type=radio]),.settings select,.settings textarea {
           width:180px; max-width:55%; padding:5px; border:1px solid #747b87; border-radius:4px;
           color:#fff; background:#30333a; }
+        .modelVoices label { justify-content:flex-start; }
+        .modelVoices label span { flex:1; }
         .settings input[type=color] { padding:0; width:52px; height:28px; }
         .settings textarea { width:100%; max-width:none; min-height:90px; font:12px/1.4 Consolas,monospace; }
         .dictRows { display:grid; gap:5px; margin:8px 0; }
@@ -1115,7 +1272,7 @@
         .updatePrompt .actions { display:flex; gap:8px; margin-top:10px; }
       </style>
       <div class="panel-layout">
-      <div class="box" part="box">
+      <div class="main-row"><div class="box" part="box">
         <button class="play" title="Пауза / продолжить (хоткей или пробел)">⏸</button>
         <button class="prev" title="Предыдущее предложение (Alt+←)">‹</button>
         <button class="next" title="Следующее предложение (Alt+→)">›</button>
@@ -1132,7 +1289,7 @@
         <a class="compatibility" href="https://github.com/Qwill552/SKAZ/releases/latest" target="_blank" rel="noopener noreferrer" hidden></a>
         <button class="startServer" type="button" hidden>Запустить</button>
         <a class="install" target="_blank" rel="noopener noreferrer" hidden>Установка</a>
-      </div>
+      </div><div class="volume-control"><button class="volume-button" type="button" aria-label="Громкость" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"></path><path class="volume-wave" d="M16 9a4 4 0 0 1 0 6 M18.5 6.5a8 8 0 0 1 0 11"></path><path class="volume-off" d="M17 9l5 6 M22 9l-5 6"></path></svg></button><div class="volume-popup"><span class="volume-value">100%</span><div class="volume-track"><span class="volume-middle"></span><input class="volume-slider" type="range" min="0" max="200" step="1" value="100" aria-label="Громкость SKAZ"></div><span class="volume-warning"></span></div></div></div>
       <section class="updatePrompt" role="dialog" aria-label="Обновление SKAZ">
         <strong class="updateTitle"></strong>
         <div class="updateDetails"></div>
@@ -1140,7 +1297,8 @@
       </section>
       <section class="settings" aria-label="Настройки SKAZ">
         <h2>Настройки SKAZ</h2>
-        <label>Голос <select class="voice"></select></label>
+        <strong>Модель и голос</strong>
+        <div class="modelVoices"></div>
         <label>Скорость по умолчанию <input class="defaultRate" type="number" min="0.5" max="2.5" step="0.1"></label>
         <label>Горячая клавиша <button class="hotkey" type="button"></button></label>
         <label>Подсветка предложения <input class="highlightChunk" type="checkbox"></label>
@@ -1186,6 +1344,8 @@
       pos: q('.pos'), rate: q('.rate'), note: q('.note'),
       slower: q('.slower'), faster: q('.faster'), stop: q('.stop'),
       gear: q('.gear'), spinner: q('.spinner'), settings: q('.settings'),
+      volumeControl: q('.volume-control'), volumeButton: q('.volume-button'), volumePopup: q('.volume-popup'),
+      volumeSlider: q('.volume-slider'), volumeValue: q('.volume-value'), volumeWarning: q('.volume-warning'),
       startServer: q('.startServer'), install: q('.install'),
       hotkey: q('.hotkey'), updatePrompt: q('.updatePrompt'), compatibility: q('.compatibility'),
     };
@@ -1197,6 +1357,7 @@
     panel.els.faster.addEventListener('click', () => nudgeRate(RATE_STEP));
     panel.els.stop.addEventListener('click', () => stopReading());
     panel.els.gear.addEventListener('click', () => panel.settings ? closeSettings() : openSettings());
+    wireVolumeControl();
     panel.els.startServer.addEventListener('click', launchServer);
     q('.applyUpdate').addEventListener('click', applyUpdate);
     q('.laterUpdate').addEventListener('click', closeUpdatePrompt);
@@ -1260,14 +1421,41 @@
       setSettingsMessage('.health', `Сервер ${health.version}, ${health.backend}, ${loaded}` +
         (health.protocol_version && health.protocol_version !== 1 ? ' · несовместимый протокол' : ''));
       showCompatibility(health.version);
-      const select = panel.root.querySelector('.voice');
-      const chosen = voice();
-      select.replaceChildren();
-      for (const name of health.voices || []) {
-        const option = document.createElement('option'); option.value = name; option.textContent = name;
-        select.appendChild(option);
+      const models = health.models || { silero_v5_ru: { voices: health.voices || [] } };
+      const localModel = Object.keys(models).find(key => key !== 'edge_tts' && key !== 'yandex_tts');
+      if (localModel) {
+        GM_setValue('fallbackModel', localModel);
+        const localVoices = models[localModel].voices || [];
+        const preferred = GM_getValue(`modelVoice:${localModel}`, DEFAULT_VOICE);
+        GM_setValue('fallbackVoice', localVoices.includes(preferred) ? preferred : localVoices[0] || DEFAULT_VOICE);
       }
-      if ((health.voices || []).includes(chosen)) select.value = chosen;
+      const container = panel.root.querySelector('.modelVoices');
+      container.replaceChildren();
+      const chosenModel = models[model()] ? model() : Object.keys(models)[0];
+      for (const [key, details] of Object.entries(models)) {
+        const label = document.createElement('label');
+        const radio = document.createElement('input');
+        radio.type = 'radio'; radio.name = 'skazModel'; radio.value = key; radio.checked = key === chosenModel;
+        const title = document.createElement('span');
+        title.textContent = key === 'edge_tts' ? 'Edge TTS (интернет)' :
+          key === 'yandex_tts' ? 'Яндекс (интернет, может перестать работать)' : key.replace('silero_', 'Silero ');
+        const select = document.createElement('select');
+        select.className = 'voice'; select.dataset.model = key;
+        for (const name of details.voices || []) {
+          const option = document.createElement('option'); option.value = name; option.textContent = name;
+          select.appendChild(option);
+        }
+        const saved = GM_getValue(`modelVoice:${key}`, key === chosenModel ? voice() : '');
+        if ((details.voices || []).includes(saved)) select.value = saved;
+        label.append(radio, title, select);
+        container.append(label);
+      }
+      const active = container.querySelector('input:checked');
+      if (active) {
+        const selected = container.querySelector(`select[data-model="${active.value}"]`);
+        GM_setValue('model', active.value);
+        if (selected && selected.value) GM_setValue('voice', selected.value);
+      }
       loadDict();
     } catch (e) { setSettingsMessage('.health', e.message); }
   }
@@ -1450,7 +1638,7 @@
     if (!automatic) box.textContent = `Доступна версия ${version}.`;
     if (automatic && GM_getValue('updatePromptedVersion', '') === version) return;
     panel.pendingUpdate = { version, script, server,
-      scriptUrl: `https://raw.githubusercontent.com/${GITHUB_REPO}/${encodeURIComponent(release.tag_name)}/userscript/skaz.user.js` };
+      scriptUrl: `https://github.com/${GITHUB_REPO}/releases/download/${encodeURIComponent(release.tag_name)}/skaz.user.js` };
     panel.root.querySelector('.updateTitle').textContent = `Доступна версия SKAZ ${version}`;
     panel.root.querySelector('.updateDetails').textContent =
       [server ? 'Обновится локальный сервер.' : '', script ? 'Откроется установка юзерскрипта в Tampermonkey.' : ''].filter(Boolean).join(' ');
@@ -1484,7 +1672,16 @@
       panelPosition();
     };
     get('prefetch').onchange = (e) => { GM_setValue('prefetch', Number(e.target.value)); if (isActive()) pump(); };
-    get('voice').onchange = (e) => { GM_setValue('voice', e.target.value); invalidateFutureAudio(); };
+    get('modelVoices').onchange = (e) => {
+      const key = e.target.dataset.model || e.target.value;
+      const select = [...get('modelVoices').querySelectorAll('select')].find(item => item.dataset.model === key);
+      if (!select || !select.value) return;
+      get('modelVoices').querySelector(`input[value="${key}"]`).checked = true;
+      GM_setValue(`modelVoice:${key}`, select.value);
+      GM_setValue('model', key);
+      GM_setValue('voice', select.value);
+      invalidateFutureAudio();
+    };
     get('defaultRate').onchange = (e) => {
       const value = Math.min(RATE_MAX, Math.max(RATE_MIN, Number(e.target.value) || 1));
       GM_setValue('rate', value); P.rate = value; if (P.activeEl) P.activeEl.playbackRate = value;
@@ -1514,7 +1711,7 @@
     q('.baseUrl').value = baseUrl(); q('.token').value = GM_getValue('token', '');
     q('.hotkey').textContent = describeHotkey(loadHotkey());
     q('.defaultRate').value = Number(GM_getValue('rate', 1)).toFixed(1);
-    q('.voice').replaceChildren();
+    q('.modelVoices').replaceChildren();
     for (const key of ['highlightChunk', 'highlightWords', 'followScroll']) q(`.${key}`).checked = GM_getValue(key, true) !== false;
     q('.chunkColor').value = GM_getValue('chunkColor', '') || '#ffd600';
     q('.wordColor').value = GM_getValue('wordColor', '') || '#ff8a00';
@@ -1540,10 +1737,19 @@
   function hidePanel(delay) {
     if (!panel.host || panel.settings || panel.pendingUpdate || !panel.els.compatibility.hidden) return;
     clearTimeout(panel.hideTimer);
-    if (!delay) { panel.host.style.setProperty('display', 'none', 'important'); return; }
+    if (!delay) {
+      panel.volumeTouchOpen = false;
+      panel.els.volumeControl.classList.remove('open');
+      panel.host.style.setProperty('display', 'none', 'important');
+      return;
+    }
     panel.hideTimer = setTimeout(() => {
       if (!panel.settings && !panel.pendingUpdate && panel.els.compatibility.hidden &&
-          (P.state === 'idle' || P.state === 'ended')) panel.host.style.setProperty('display', 'none', 'important');
+          (P.state === 'idle' || P.state === 'ended')) {
+        panel.volumeTouchOpen = false;
+        panel.els.volumeControl.classList.remove('open');
+        panel.host.style.setProperty('display', 'none', 'important');
+      }
     }, delay);
   }
 
@@ -1585,7 +1791,13 @@
     reqs: new Map(),      // index → {abort, token, attempt}
     failed: new Set(),
     failures: 0,          // подряд, сбрасывается любым успехом
+    onlineFailures: 0,
+    onlineDisabled: false,
+    onlineWarned: false,
     activeEl: null,
+    audioContext: null,
+    audioReady: null,
+    playToken: 0,
     seekTimer: null,
     gapTimer: null,       // пауза между абзацами
     gapPending: false,    // паузу между абзацами прервали кнопкой «пауза»
@@ -1606,6 +1818,92 @@
 
   function isActive() { return P.state !== 'idle' && P.state !== 'ended'; }
 
+  function audioUnavailable(context) {
+    if (P.audioContext !== context) return;
+    for (const entry of P.audio.values()) {
+      if (!entry.source) continue;
+      try { entry.source.disconnect(); } catch (e) { }
+      try { entry.gain.disconnect(); } catch (e) { }
+      try { entry.el.pause(); entry.el.removeAttribute('src'); entry.el.load(); } catch (e) { }
+      entry.el = new Audio();
+      entry.el.preload = 'auto';
+      entry.el.src = entry.url;
+      entry.source = null;
+      entry.gain = null;
+    }
+    P.audioContext = null;
+    P.audioReady = null;
+    volume.limited = true;
+    updateVolumeControl();
+    try { Promise.resolve(context.close()).catch(() => {}); } catch (e) { }
+  }
+
+  function resumeAudioContext(context) {
+    let resumed;
+    try { resumed = context.resume(); } catch (e) { audioUnavailable(context); return Promise.resolve(false); }
+    let timer;
+    const timeout = new Promise((resolve, reject) => {
+      timer = setTimeout(() => reject(new Error('AudioContext timeout')), 2000);
+    });
+    return Promise.race([Promise.resolve(resumed), timeout]).then(() => {
+      if (context.state !== 'running') throw new Error('AudioContext suspended');
+      return true;
+    }).catch(() => { audioUnavailable(context); return false; }).finally(() => clearTimeout(timer));
+  }
+
+  function initAudioContext() {
+    const AudioContextType = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextType) {
+      volume.limited = true;
+      updateVolumeControl();
+      return;
+    }
+    try {
+      const context = new AudioContextType();
+      P.audioContext = context;
+      P.audioReady = resumeAudioContext(context);
+      volume.limited = false;
+      updateVolumeControl();
+    } catch (e) {
+      volume.limited = true;
+      updateVolumeControl();
+    }
+  }
+
+  function prepareEntryAudio(entry) {
+    const context = P.audioContext;
+    if (!context || context.state !== 'running') {
+      entry.el.volume = Math.min(1, volumeGain());
+      return;
+    }
+    if (entry.gain) {
+      entry.gain.gain.value = volumeGain();
+      return;
+    }
+    let source = null;
+    let gain = null;
+    try {
+      source = context.createMediaElementSource(entry.el);
+      gain = context.createGain();
+      gain.gain.value = volumeGain();
+      source.connect(gain);
+      gain.connect(context.destination);
+      entry.source = source;
+      entry.gain = gain;
+    } catch (e) {
+      if (source) source.disconnect();
+      if (gain) gain.disconnect();
+      audioUnavailable(context);
+      if (source) {
+        try { entry.el.removeAttribute('src'); entry.el.load(); } catch (error) { }
+        entry.el = new Audio();
+        entry.el.preload = 'auto';
+        entry.el.src = entry.url;
+      }
+      entry.el.volume = Math.min(1, volumeGain());
+    }
+  }
+
   // --- звук: хранение и освобождение ---
   //
   // Блобы текут — подтверждённая практикой грабля: сотня запросов подбирается
@@ -1619,6 +1917,8 @@
     const el = entry.el;
     el.onended = null;
     el.onerror = null;
+    if (entry.source) { try { entry.source.disconnect(); } catch (e) { } entry.source = null; }
+    if (entry.gain) { try { entry.gain.disconnect(); } catch (e) { } entry.gain = null; }
     try { el.pause(); } catch (e) { /* ignore */ }
     try { el.removeAttribute('src'); el.load(); } catch (e) { /* ignore */ }
     try { URL.revokeObjectURL(entry.url); } catch (e) { /* ignore */ }
@@ -1634,9 +1934,14 @@
   }
 
   function releaseAll() {
+    P.playToken++;
     P.activeEl = null;
     for (const entry of P.audio.values()) releaseEntry(entry);
     P.audio.clear();
+    const context = P.audioContext;
+    P.audioContext = null;
+    P.audioReady = null;
+    if (context) { try { Promise.resolve(context.close()).catch(() => {}); } catch (e) { } }
   }
 
   function invalidateFutureAudio() {
@@ -1696,7 +2001,8 @@
       method: 'POST',
       url: `${baseUrl()}/tts`,
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      data: JSON.stringify({ text: chunk.text, voice: voice() }),
+      data: JSON.stringify({ text: chunk.text, model: P.onlineDisabled ? GM_getValue('fallbackModel', 'silero_v5_ru') : model(),
+        voice: P.onlineDisabled ? GM_getValue('fallbackVoice', DEFAULT_VOICE) : voice() }),
       responseType: 'arraybuffer',
       // Замерено в TTS-1: на входе около 5000 знаков модель не отказывает, а
       // молотит почти пять минут. Чанкинг такого не пришлёт, но если пришлёт
@@ -1708,7 +2014,21 @@
         P.reqs.delete(i);
         if (res.status === 200 && res.response) {
           P.failures = 0;
-          storeAudio(i, res.response, parseTimings(res.responseHeaders));
+          const fallback = /x-skaz-fallback:\s*silero/i.test(res.responseHeaders || '');
+          if (model() === 'edge_tts' || model() === 'yandex_tts') {
+            P.onlineFailures = fallback ? P.onlineFailures + 1 : 0;
+            if (fallback && !P.onlineWarned) {
+              P.onlineWarned = true;
+              GM_notification(`SKAZ: ${model() === 'yandex_tts' ? 'Яндекс' : 'Edge TTS'} недоступен, чтение продолжается голосом Silero`);
+            }
+            if (P.onlineFailures >= 3 && !P.onlineDisabled) {
+              P.onlineDisabled = true;
+              GM_notification('SKAZ: до конца чтения выбран Silero');
+            }
+          }
+          const contentType = /content-type:\s*audio\/mpeg/i.test(res.responseHeaders || '') ? 'audio/mpeg' :
+            /content-type:\s*audio\/ogg/i.test(res.responseHeaders || '') ? 'audio/ogg' : 'audio/wav';
+          storeAudio(i, res.response, parseTimings(res.responseHeaders), contentType);
           return;
         }
         onHttpFailure(i, attempt, res.status || 0);
@@ -1822,8 +2142,8 @@
 
   // --- очередь воспроизведения ---
 
-  function storeAudio(i, arrayBuffer, words) {
-    const url = URL.createObjectURL(new Blob([arrayBuffer], { type: 'audio/wav' }));
+  function storeAudio(i, arrayBuffer, words, contentType = 'audio/wav') {
+    const url = URL.createObjectURL(new Blob([arrayBuffer], { type: contentType }));
     const el = new Audio();
     el.preload = 'auto';
     el.src = url;
@@ -1854,6 +2174,7 @@
   }
 
   function detachActive() {
+    P.playToken++;
     stopTicker();
     const el = P.activeEl;
     if (!el) return;
@@ -1938,7 +2259,7 @@
     clearWordHighlight();
   }
 
-  function playCurrent() {
+  async function playCurrent() {
     const i = P.index;
     const entry = P.audio.get(i);
     if (!entry) {
@@ -1948,6 +2269,13 @@
       return;
     }
     detachActive();
+    const token = P.playToken;
+    setState('buffering');
+    if (P.audioReady) await P.audioReady;
+    if (token !== P.playToken || P.index !== i || P.state === 'paused') return;
+    if (P.audioContext && P.audioContext.state !== 'running') await resumeAudioContext(P.audioContext);
+    if (token !== P.playToken || P.index !== i || P.state === 'paused') return;
+    prepareEntryAudio(entry);
     const el = entry.el;
     P.activeEl = el;
     el.playbackRate = P.rate;
@@ -2016,6 +2344,9 @@
     P.index = 0;
     P.failed.clear();
     P.failures = 0;
+    P.onlineFailures = 0;
+    P.onlineDisabled = false;
+    P.onlineWarned = false;
     P.sourceText = '';
     P.follow = true;
     P.gapPending = false;
@@ -2206,6 +2537,7 @@
     P.portScanTried = false;
     P.discovering = null;
     ourScrollAt = -Infinity;
+    initAudioContext();
 
     const chunk = P.chunks[index];
     showHighlight(rangeForSpan(P.doc, chunk.s, chunk.e));
@@ -2295,6 +2627,7 @@
 
   document.addEventListener('keydown', (e) => {
     if (panel.capturing) return;
+    if (panel.els && e.composedPath().includes(panel.els.volumeControl)) return;
     if (panelHasFocus()) {
       if (e.code === 'Escape') {
         e.preventDefault(); e.stopPropagation();

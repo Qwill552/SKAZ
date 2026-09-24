@@ -151,11 +151,10 @@ export UV_PROJECT_ENVIRONMENT="$root/.venv"
   "$root/.venv/bin/python" -c 'import torch; assert torch.version.cuda is None, "CUDA wheel is not supported"'
 )
 chmod 600 "$config_dir/config.json" "$config_dir/user_dict.json"
-model_name="$("$root/.venv/bin/python" -c 'import json,sys; print(json.load(open(sys.argv[1]))["model"])' "$config_dir/config.json")"
-model_info="$("$root/.venv/bin/python" -c 'import json,sys; e=json.load(open(sys.argv[1]))[sys.argv[2]]; print(e["url"].rsplit("/",1)[-1],e["sha256"])' "$root/models.json" "$model_name")"
-read -r model_file model_hash <<< "$model_info"
-if [[ "$os" == Linux ]]; then actual="$(sha256sum "$root/models/$model_file")"; else actual="$(shasum -a 256 "$root/models/$model_file")"; fi
-[[ "$actual" == "$model_hash "* ]] || fail 'SHA-256 модели не совпала.'
+while read -r model_file model_hash; do
+  if [[ "$os" == Linux ]]; then actual="$(sha256sum "$root/models/$model_file")"; else actual="$(shasum -a 256 "$root/models/$model_file")"; fi
+  [[ "$actual" == "$model_hash "* ]] || fail "SHA-256 модели $model_file не совпала."
+done < <("$root/.venv/bin/python" -c 'import json,sys; c=json.load(open(sys.argv[1])); m=json.load(open(sys.argv[2])); print("\n".join(e["url"].rsplit("/",1)[-1]+" "+e["sha256"] for k in c.get("models",[c["model"]]) if (e:=m.get(k))))' "$config_dir/config.json" "$root/models.json")
 
 autostart=no
 if [[ "$os" == Linux ]]; then
