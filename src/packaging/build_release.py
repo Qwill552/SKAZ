@@ -8,7 +8,7 @@ import tarfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
-DIST = ROOT / "dist"
+DIST = ROOT.parent / "dist"
 sys.path.insert(0, str(ROOT))
 VERSION = runpy.run_path(str(ROOT / "server/version.py"))["VERSION"]
 
@@ -77,8 +77,9 @@ def build(destination=DIST):
     script.write_bytes((ROOT / "userscript/skaz.user.js").read_bytes())
     checksums = {path.name: sha256(path) for path in (*archives.values(), script)}
     (destination / "version.json").write_text(json.dumps({"version": VERSION, "assets": checksums}, indent=2) + "\n", encoding="utf-8")
-    for path in (*archives.values(), script, destination / "version.json"):
-        (destination / f"{path.name}.sha256").write_text(f"{sha256(path)}  {path.name}\n", encoding="ascii")
+    notes = "## Скачать SKAZ\n\nВыберите архив для своей системы. Архивы Source code, которые GitHub добавляет автоматически, не являются готовыми архивами для установки.\n\n## SHA-256\n\n```text\n"
+    notes += "".join(f"{checksums[path.name]}  {path.name}\n" for path in archives.values())
+    (destination / "release-notes.md").write_text(notes + "```\n", encoding="utf-8")
     return archives
 
 

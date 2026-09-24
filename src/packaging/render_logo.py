@@ -16,7 +16,7 @@ def render():
     browser = next((path for path in candidates if path.is_file()), None)
     if browser is None:
         raise SystemExit('Install Chrome or Edge on the build machine to render skaz.svg')
-    work = ROOT / '_check/tts9'
+    work = ROOT.parent / '_check/tts9'
     work.mkdir(parents=True, exist_ok=True)
     html, output = work / 'logo-render.html', work / 'logo.png'
     html.write_text('<!doctype html><style>html,body{margin:0;background:transparent}'

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SKAZ
 // @namespace    https://github.com/Qwill552/SKAZ
-// @version      1.0.1
+// @version      1.0.2
 // @updateURL    https://github.com/Qwill552/SKAZ/releases/latest/download/skaz.user.js
 // @downloadURL  https://github.com/Qwill552/SKAZ/releases/latest/download/skaz.user.js
 // @description  Озвучивает выделенный текст или всю страницу локальным Silero
@@ -40,7 +40,7 @@
   // ==== 1. Константы =====================================================
 
   const DEFAULT_BASE_URL = 'http://127.0.0.1:8756';
-  const SCRIPT_VERSION = '1.0.1';
+  const SCRIPT_VERSION = '1.0.2';
   const GITHUB_REPO = 'Qwill552/SKAZ';
   const DEFAULT_VOICE = 'baya';
   const DEFAULT_HOTKEY = { code: 'KeyT', alt: true, ctrl: false, shift: false, meta: false };

@@ -1,10 +1,22 @@
-# SKAZ
+<div align="center">
 
-**Озвучивайте выделенный текст или всю страницу русским голосом прямо в браузере.** SKAZ работает на вашем компьютере: текст отправляется только локальному серверу.
+<h1>SKAZ</h1>
 
-_Короткая запись работы с выделением, озвучкой и подсветкой появится здесь после ручной записи интерфейса._
+<p><strong>Озвучивайте выделенный текст или всю страницу русским голосом прямо в браузере.</strong><br>SKAZ работает на вашем компьютере: текст отправляется только локальному серверу.</p>
 
-[Скачать для Windows](https://github.com/Qwill552/SKAZ/releases/latest/download/skaz-windows.zip) · [Скачать для Linux](https://github.com/Qwill552/SKAZ/releases/latest/download/skaz-linux.tar.gz) · [Скачать для macOS](https://github.com/Qwill552/SKAZ/releases/latest/download/skaz-macos.tar.gz)
+<p><a href="#скачать">Скачать</a> · <a href="#демонстрация">Демонстрация</a> · <a href="#установка">Установка</a> · <a href="#возможности">Возможности</a> · <a href="#настройки">Настройки</a> · <a href="#лицензии">Лицензии</a></p>
+
+</div>
+
+## Скачать
+
+[![Скачать для Windows](https://img.shields.io/badge/Windows-7B61FF?style=flat-square&logo=windows&logoColor=white)](https://github.com/Qwill552/SKAZ/releases/latest/download/skaz-windows.zip)
+[![Скачать для Linux](https://img.shields.io/badge/Linux-7B61FF?style=flat-square&logo=linux&logoColor=white)](https://github.com/Qwill552/SKAZ/releases/latest/download/skaz-linux.tar.gz)
+[![Скачать для macOS](https://img.shields.io/badge/macOS-7B61FF?style=flat-square&logo=apple&logoColor=white)](https://github.com/Qwill552/SKAZ/releases/latest/download/skaz-macos.tar.gz)
+
+## Демонстрация
+
+[▶ Смотреть демонстрацию SKAZ (MP4)](https://github.com/Qwill552/SKAZ/blob/main/.github/readme/demo.mp4)
 
 ## Установка
 
@@ -13,6 +25,18 @@ _Короткая запись работы с выделением, озвуч�
 3. На странице настройки SKAZ установите предложенный юзерскрипт и нажмите «Связать с браузером». На любом сайте выделите текст и нажмите **Alt+T**.
 
 Для первой установки нужны интернет и около **2 ГБ свободного места**: установщик скачивает Python, зависимости и модель. Системный Python ставить не требуется. После установки озвучка работает без интернета; интернет нужен для проверки и загрузки обновлений.
+
+### Установка расширения
+
+> [!CAUTION]
+> Перед созданием нового сообщения о проблеме проверьте [существующие Issues](https://github.com/Qwill552/SKAZ/issues).
+
+> [!WARNING]
+> Пользователям Tampermonkey 5.2+ в браузерах на Chromium (Chrome, Edge, Brave, Vivaldi и других) нужно:
+> 1. Открыть страницу расширений (`chrome://extensions`, в Edge — `edge://extensions`) и включить «Режим разработчика».
+> 2. На Chromium 138+ открыть сведения о Tampermonkey и включить «Разрешить пользовательские скрипты».
+>
+> В Opera установите [Violentmonkey](https://violentmonkey.github.io/) вместо Tampermonkey и разрешите расширению доступ к результатам на странице поиска в его настройках.
 
 ### ВАЖНО!!! Предупреждение Windows SmartScreen
 
@@ -26,6 +50,8 @@ Windows может предупредить о неподписанном при
 - Словарь для имён и терминов: ударение знаком `+`, пауза знаком `-`.
 - Локальная работа через `127.0.0.1`, без отправки текста в облако.
 - Проверка обновлений при запуске; сервер обновляется после подтверждения, юзерскрипт обновляет Tampermonkey.
+
+## Настройки
 
 <details>
 <summary>Как сменить голос и скорость</summary>
