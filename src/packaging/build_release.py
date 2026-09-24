@@ -80,7 +80,9 @@ def build(destination=DIST):
     notes = (ROOT / "packaging/release-notes.md").read_text(encoding="utf-8").strip()
     if not notes.startswith(f"## v{VERSION}\n"):
         raise SystemExit("Update packaging/release-notes.md for the current version")
-    (destination / "release-notes.md").write_text(notes + "\n\nОткройте `README.txt` в скачанном архиве для инструкций по установке и обновлению.\n", encoding="utf-8")
+    if "README.txt" not in notes:
+        raise SystemExit("Add the README.txt instruction to packaging/release-notes.md")
+    (destination / "release-notes.md").write_text(notes + "\n", encoding="utf-8")
     return archives
 
 
