@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$InstallDir)
+param([Parameter(Mandatory=$true)][string]$InstallDir, [switch]$NoLaunch)
 
 $ErrorActionPreference = 'Stop'
 $Repository = 'Qwill552/SKAZ'
@@ -28,7 +28,7 @@ try {
     Expand-Archive -LiteralPath $ArchivePath -DestinationPath $Extracted
     $Installer = Join-Path $Extracted '_internal\packaging\install.ps1'
     if (-not (Test-Path -LiteralPath $Installer)) { throw 'Installer missing from release' }
-    & $Installer -InstallDir $InstallDir -Unattended
+    & $Installer -InstallDir $InstallDir -Unattended -NoLaunch:$NoLaunch
     if ($LASTEXITCODE -ne 0) { throw "Installer failed: $LASTEXITCODE" }
     Add-Content -LiteralPath $Log -Value "Updated to $($Manifest.version)" -Encoding UTF8
 } catch {

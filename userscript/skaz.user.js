@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SKAZ
 // @namespace    https://github.com/Qwill552/SKAZ
-// @version      1.0.0
+// @version      1.0.1
 // @updateURL    https://github.com/Qwill552/SKAZ/releases/latest/download/skaz.user.js
 // @downloadURL  https://github.com/Qwill552/SKAZ/releases/latest/download/skaz.user.js
 // @description  Озвучивает выделенный текст или всю страницу локальным Silero
@@ -40,9 +40,8 @@
   // ==== 1. Константы =====================================================
 
   const DEFAULT_BASE_URL = 'http://127.0.0.1:8756';
-  const SCRIPT_VERSION = '1.0.0';
+  const SCRIPT_VERSION = '1.0.1';
   const GITHUB_REPO = 'Qwill552/SKAZ';
-  const RELEASE_URL = `https://github.com/${GITHUB_REPO}/releases/latest/download/skaz.user.js`;
   const DEFAULT_VOICE = 'baya';
   const DEFAULT_HOTKEY = { code: 'KeyT', alt: true, ctrl: false, shift: false, meta: false };
 
@@ -1403,7 +1402,7 @@
     const pending = panel.pendingUpdate;
     if (!pending) return;
     panel.root.querySelector('.applyUpdate').disabled = true;
-    if (pending.script) window.open(RELEASE_URL, '_blank', 'noopener');
+    if (pending.script) window.open(pending.scriptUrl, '_blank', 'noopener');
     try {
       if (pending.server) {
         const token = GM_getValue('token', '');
@@ -1450,7 +1449,8 @@
     }
     if (!automatic) box.textContent = `Доступна версия ${version}.`;
     if (automatic && GM_getValue('updatePromptedVersion', '') === version) return;
-    panel.pendingUpdate = { version, script, server };
+    panel.pendingUpdate = { version, script, server,
+      scriptUrl: `https://raw.githubusercontent.com/${GITHUB_REPO}/${encodeURIComponent(release.tag_name)}/userscript/skaz.user.js` };
     panel.root.querySelector('.updateTitle').textContent = `Доступна версия SKAZ ${version}`;
     panel.root.querySelector('.updateDetails').textContent =
       [server ? 'Обновится локальный сервер.' : '', script ? 'Откроется установка юзерскрипта в Tampermonkey.' : ''].filter(Boolean).join(' ');
