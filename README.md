@@ -14,6 +14,35 @@ https://github.com/user-attachments/assets/1f7c2d00-59da-403b-9547-a8f0513b4a0a
 
 </div>
 
+## Примеры голосов
+
+### Яндекс
+
+| TTS Name | Model | Examples |
+| --- | --- | --- |
+| Oksana | `oksana.gpu` | [Слушать](https://raw.githubusercontent.com/Alkohole/machine-reading-text/main/examples/Oksana.wav) |
+| Jane | `jane.gpu` | [Слушать](https://raw.githubusercontent.com/Alkohole/machine-reading-text/main/examples/Jane.wav) |
+| Omazh | `omazh.gpu` | [Слушать](https://raw.githubusercontent.com/Alkohole/machine-reading-text/main/examples/Omazh.wav) |
+| Nastya | `nastya.gpu` | [Слушать](https://raw.githubusercontent.com/Alkohole/machine-reading-text/main/examples/Nastya.wav) |
+| Sasha | `sasha.gpu` | [Слушать](https://raw.githubusercontent.com/Alkohole/machine-reading-text/main/examples/Sasha.wav) |
+| Tatyana | `tatyana_abramova.gpu` | [Слушать](https://raw.githubusercontent.com/Alkohole/machine-reading-text/main/examples/Tatyana_Abramova.wav) |
+| Ermil | `ermil.gpu` | [Слушать](https://raw.githubusercontent.com/Alkohole/machine-reading-text/main/examples/Ermil.wav) |
+| Zahar | `zahar.gpu` | [Слушать](https://raw.githubusercontent.com/Alkohole/machine-reading-text/main/examples/Zahar.wav) |
+| Kolya | `kolya.gpu` | [Слушать](https://raw.githubusercontent.com/Alkohole/machine-reading-text/main/examples/Kolya.wav) |
+| Kostya | `kostya.gpu` | [Слушать](https://raw.githubusercontent.com/Alkohole/machine-reading-text/main/examples/Kostya.wav) |
+| Anton | `anton_samokhvalov.gpu` | [Слушать](https://raw.githubusercontent.com/Alkohole/machine-reading-text/main/examples/Anton_Samokhvalov.wav) |
+
+Примеры Яндекса: [machine-reading-text](https://github.com/Alkohole/machine-reading-text/tree/main/examples).
+
+### Edge TTS
+
+| TTS Name | Model | Examples |
+| --- | --- | --- |
+| Svetlana | `ru-RU-SvetlanaNeural` | [Слушать](https://huggingface.co/spaces/VItaliaN77/rus-edge-tts-webui/resolve/main/example/ru-RU-SvetlanaNeural.wav) |
+| Dmitry | `ru-RU-DmitryNeural` | [Слушать](https://huggingface.co/spaces/VItaliaN77/rus-edge-tts-webui/resolve/main/example/ru-RU-DmitryNeural.wav) |
+
+Примеры Edge TTS: [rus-edge-tts-webui](https://huggingface.co/spaces/VItaliaN77/rus-edge-tts-webui/tree/main/example).
+
 ## Установка расширения
 
 Установите [Tampermonkey](https://www.tampermonkey.net/) в браузере. В Opera установите [Violentmonkey](https://violentmonkey.github.io/).
